@@ -46,7 +46,7 @@
 #   - SFML_XXX_DEPENDENCIES:    the list of libraries the module depends on, in case of static linking
 # - SFML_LIBRARIES:    the list of all libraries corresponding to the required modules
 # - SFML_FOUND:        true if all the required modules are found
-# - SFML_INCLUDE_DIR:  the path where SFML headers are located (the directory containing the SFML/Config.hpp file)
+# - SFML_INCLUDE_DIR:  the path where SFML include are located (the directory containing the SFML/Config.hpp file)
 # - SFML_DEPENDENCIES: the list of libraries SFML depends on, in case of static linking
 #
 # example:
@@ -60,7 +60,7 @@ if(SFML_STATIC_LIBRARIES)
     add_definitions(-DSFML_STATIC)
 endif()
 
-# define the list of search paths for headers and libraries
+# define the list of search paths for include and libraries
 set(FIND_SFML_PATHS
         ${SFML_ROOT}
         $ENV{SFML_ROOT}
