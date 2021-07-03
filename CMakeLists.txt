@@ -14,3 +14,10 @@ if (SFML_FOUND)
     include_directories(${SFML_INCLUDE_DIR})
     target_link_libraries(Voronoi_Diagram ${SFML_LIBRARIES})
 endif()
+
+# Copy dlls to build because such files need to be in the same folder
+# as SFML is dynamically linked by default on Windows (cursed platform)
+if(WIN32)
+    file(GLOB BINARY_DEP_DLLS "${SFML_INCLUDE_DIR}/../bin/*.dll")
+    file(COPY ${BINARY_DEP_DLLS} DESTINATION ${CMAKE_BINARY_DIR})
+endif()
