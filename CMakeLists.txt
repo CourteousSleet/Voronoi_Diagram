@@ -21,3 +21,6 @@ if(WIN32)
     file(GLOB BINARY_DEP_DLLS "${SFML_INCLUDE_DIR}/../bin/*.dll")
     file(COPY ${BINARY_DEP_DLLS} DESTINATION ${CMAKE_BINARY_DIR})
 endif()
+
+
+install(TARGETS Voronoi_Diagram DESTINATION ${CMAKE_CURRENT_LIST_DIR}/bin)
