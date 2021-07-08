@@ -26,7 +26,6 @@ int main() {
     return EXIT_FAILURE;
   window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
 
-
   // Limit the framerate to 60 frames per second (this step is optional)
   window.setFramerateLimit(120);
 
