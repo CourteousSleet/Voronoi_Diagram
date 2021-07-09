@@ -1,17 +1,7 @@
 #include <SFML/Graphics.hpp>
-#include <set>
-#include <map>
 #include <iterator>
-#include <algorithm>
 
 double const eps = 0.2;
-
-struct less {
-  bool operator()(double l, double r) const { return l < r; }
-  using is_transparent = void;
-  bool operator()(int l, double r) const { return l + eps < r; }
-  bool operator()(double l, int r) const { return l + eps < r; }
-};
 
 int main() {
   // Create the main window
