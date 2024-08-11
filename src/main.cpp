@@ -1,70 +1,131 @@
-#include <SFML/Graphics.hpp>
-#include <iterator>
+#ifdef _WIN32
+#include <windows.h>
+#include <GL/gl.h>
 
-double const eps = 0.2;
+void SetupPixelFormat(HDC hdc) { 
+    PIXELFORMATDESCRIPTOR pfd = {
+        sizeof(PIXELFORMATDESCRIPTOR),
+        1,
+        PFD_DRAW_TO_WINDOW | PFD_SUPPORT_OPENGL | PFD_DOUBLEBUFFER,
+        PFD_TYPE_RGBA,
+        32,
+        0, 0, 0, 0, 0, 0,
+        0, 0,
+        0, 0, 0, 0, 0,
+        24,
+        8,
+        0,
+        PFD_MAIN_PLANE,
+        0,
+        0, 0, 0
+    };
 
-int main() {
-  // Create the main window
-  sf::RenderWindow window(sf::VideoMode(800, 600), "Voronoi Diagram");
+    int pixelFormat = ChoosePixelFormat(hdc, &pfd);
+    SetPixelFormat(hdc, pixelFormat, &pfd);
+}
 
-  auto icon = sf::Image();
-#ifdef unix
-  if (!icon.loadFromFile("(../images/icon.png)"))
-#else
-  if (!icon.loadFromFile(R"(..\images\icon.png)"))
-#endif //unix
-    return EXIT_FAILURE;
-  window.setIcon(icon.getSize().x, icon.getSize().y, icon.getPixelsPtr());
+LRESULT CALLBACK WndProc(HWND hwnd, UINT uMsg, WPARAM wParam, LPARAM lParam) {
+    switch (uMsg) {
+    case WM_CLOSE:
+        PostQuitMessage(0);
+        break;
+    default:
+        return DefWindowProc(hwnd, uMsg, wParam, lParam);
+    }
+    return 0;
+}
 
-  // Limit the framerate to 60 frames per second (this step is optional)
-  window.setFramerateLimit(120);
+int WINAPI WinMain(HINSTANCE hInstance, HINSTANCE hPrevInstance, LPSTR lpCmdLine, int nCmdShow) {
+    WNDCLASS wc = {};
+    wc.style = CS_OWNDC;
+    wc.lpfnWndProc = WndProc;
+    wc.hInstance = hInstance;
+    wc.lpszClassName = "OpenGLWindowClass";
+    RegisterClass(&wc);
 
-  window.setVerticalSyncEnabled(true);
+    HWND hwnd = CreateWindowEx(0, wc.lpszClassName, "OpenGL Window", WS_OVERLAPPEDWINDOW, CW_USEDEFAULT, CW_USEDEFAULT, 800, 600, nullptr, nullptr, hInstance, nullptr);
+    ShowWindow(hwnd, nCmdShow);
 
-  sf::RectangleShape sweep_line(sf::Vector2f(150.f, 5.f));
-  sweep_line.rotate(90.f);
-  sweep_line.setPosition(window.getSize().x / 2, window.getSize().y / 2);
-  sweep_line.setFillColor(sf::Color::Red);
-  sweep_line.setOutlineThickness(2);
+    HDC hdc = GetDC(hwnd);
+    SetupPixelFormat(hdc);
+    HGLRC hglrc = wglCreateContext(hdc);
+    wglMakeCurrent(hdc, hglrc);
 
-  /*
-  // Load a sprite to display
-  sf::Texture texture;
-#ifdef unix
-  if (!texture.loadFromFile("(../images/visualization.png)"))
-#else
-  if (!texture.loadFromFile(R"(..\images\visualization.png)"))
-#endif //unix
-    return EXIT_FAILURE;
-  sf::Sprite sprite(texture);
-  */
-
-
-
-  // Start the game loop
-  while (window.isOpen()) {
-    // Process events
-    sf::Event event{};
-    while (window.pollEvent(event)) {
-      // Close window: exit
-      if (event.type == sf::Event::Closed)
-        window.close();
+    MSG msg = {};
+    while (msg.message != WM_QUIT) {
+        if (PeekMessage(&msg, nullptr, 0, 0, PM_REMOVE)) {
+            TranslateMessage(&msg);
+            DispatchMessage(&msg);
+        }
+        else {
+            glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+            glClear(GL_COLOR_BUFFER_BIT);
+            SwapBuffers(hdc);
+        }
     }
 
-    // Activate the window for OpenGL rendering
-    window.setActive();
+    wglMakeCurrent(nullptr, nullptr);
+    wglDeleteContext(hglrc);
+    ReleaseDC(hwnd, hdc);
+    DestroyWindow(hwnd);
 
-    // Here is the main code of drawing
-
-    // Clear screen
-    window.clear(sf::Color(255, 255, 255, 0));
-    window.draw(sweep_line);
-
-    // Draw the sprite
-    //window.draw(sprite);
-
-    // Update the window
-    window.display();
-  }
-  return EXIT_SUCCESS;
+    return 0;
 }
+
+#elif __linux__
+#include <X11/Xlib.h>
+#include <GL/gl.h>
+#include <GL/glx.h>
+
+GLXContext CreateGLContext(Display* display, Window window) {
+    static int visual_attribs[] = { None };
+    int numberOfFramebufferConfigurations = 0;
+    GLXFBConfig* fbc = glXChooseFBConfig(display, DefaultScreen(display), visual_attribs, &numberOfFramebufferConfigurations);
+    XVisualInfo* vi = glXGetVisualFromFBConfig(display, fbc[0]);
+    GLXContext glc = glXCreateContext(display, vi, NULL, GL_TRUE);
+    XFree(vi);
+    XFree(fbc);
+    return glc;
+}
+
+int main() {
+    Display* display = XOpenDisplay(nullptr);
+    if (display == nullptr) {
+        return -1;
+    }
+
+    int screen = DefaultScreen(display);
+    Window root = RootWindow(display, screen);
+
+    XSetWindowAttributes swa;
+    swa.event_mask = ExposureMask | KeyPressMask;
+    Window window = XCreateWindow(display, root, 0, 0, 800, 600, 0, CopyFromParent, InputOutput, CopyFromParent, CWEventMask, &swa);
+    XMapWindow(display, window);
+    XStoreName(display, window, "OpenGL Window");
+
+    GLXContext glc = CreateGLContext(display, window);
+    glXMakeCurrent(display, window, glc);
+
+    XEvent xev;
+    while (true) {
+        if (XPending(display) > 0) {
+            XNextEvent(display, &xev);
+            if (xev.type == KeyPress) {
+                break;
+            }
+        }
+
+        glClearColor(0.0f, 0.0f, 0.0f, 1.0f);
+        glClear(GL_COLOR_BUFFER_BIT);
+        glXSwapBuffers(display, window);
+    }
+
+    glXMakeCurrent(display, None, nullptr);
+    glXDestroyContext(display, glc);
+    XDestroyWindow(display, window);
+    XCloseDisplay(display);
+
+    return 0;
+}
+
+#endif
